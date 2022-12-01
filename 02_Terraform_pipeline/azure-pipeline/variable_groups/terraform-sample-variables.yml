@@ -1,19 +1,19 @@
 variables:
 # Terraform backend configuration
 - name: container_name
-  value: azure-way-terraform-state
+  value: 
 - name: key
   value: tf-$(container_name).tfstate
 - name: storage_account_name
-  value: azurewaysa
+  value: 
 # Terraform configuration file for environment  
 - name: configuration-file-path
   value: environment/dev/dev.tfvars
 # Terraform service principal data  
 - name: spn_client_id
-  value: c6325476-d9ff-41da-af83-55d9ac6aade8
+  value: 
 - name: spn_tenant_id
-  value: 45cb38f2-ede5-461d-a41c-e0c118243263
+  value: 
 # Terraform workdir and version  
 - name: terafform-workdir
   value: 02_Terraform_pipeline/terraform
@@ -21,6 +21,6 @@ variables:
   value: 1.3.6
 # Subscription details  
 - name: subscription_id
-  value: 73f1730b-007e-4da5-919a-54500cd572a9
+  value: 
 
 
