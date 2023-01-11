@@ -1,6 +1,9 @@
 **/*.zip
 **/*.dtmp
 **/*.bkp
-03_Terraform_network_restrictions
-**/03_Terraform_network_restrictions/
-02_Terraform_pipeline/azure-pipeline/.DS_Store
+**/.DS_Store
+**/*.drawio
+.terraform
+**/*.hcl
+tfplan
+.DS_Store
