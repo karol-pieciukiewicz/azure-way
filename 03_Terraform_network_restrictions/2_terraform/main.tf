@@ -195,7 +195,7 @@ module "sample_dotnet_docker" {
 }
 
 module "apim" {
-  source = "./modules/application_management"
+  source = "./modules/api_management"
 
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
