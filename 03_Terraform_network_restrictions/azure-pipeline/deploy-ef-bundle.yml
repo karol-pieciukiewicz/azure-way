@@ -7,7 +7,7 @@ variables:
   databaseContext: MyDatabaseContext
   azureSubscription: ''
   projectPath: $(Build.SourcesDirectory)/
-  connection_string: ""
+  connectionString: ""
 stages:
   - stage: Build
     displayName: Build Stage
@@ -54,4 +54,4 @@ stages:
                   scriptLocation: inlineScript
                   inlineScript: |
                     chmod +x $(Pipeline.Workspace)/SQLScripts/bundle
-                    $(Pipeline.Workspace)/SQLScripts/bundle --connection "$(connection_string)"
+                    $(Pipeline.Workspace)/SQLScripts/bundle --connection "$(connectionString)"
