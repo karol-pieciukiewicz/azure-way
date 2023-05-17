@@ -1,0 +1,57 @@
+trigger: none
+
+pool: Default
+
+variables:
+  buildConfiguration: 'Release'
+  databaseContext: MyDatabaseContext
+  azureSubscription: ''
+  projectPath: $(Build.SourcesDirectory)/
+  connection_string: ""
+stages:
+  - stage: Build
+    displayName: Build Stage
+    jobs:
+      - job: Build
+        displayName: Build ToDoApi
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: '7.x'        
+          - task: DotNetCoreCLI@2
+            displayName: Install EF Tool
+            inputs:
+              command: custom
+              custom: 'tool'
+              arguments: 'update --global dotnet-ef'                      
+          - task: DotNetCoreCLI@2
+            displayName: Create SQL Scripts
+            inputs:
+              command: custom
+              custom: 'ef'
+              arguments: 'migrations bundle --self-contained -r linux-x64 --no-build --output $(Build.ArtifactStagingDirectory)/ef/bundle --project $(projectPath) --context $(databaseContext) --configuration $(buildConfiguration)'           
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact: SQLScripts'
+            inputs:
+              PathtoPublish: $(Build.ArtifactStagingDirectory)/ef
+              ArtifactName: SQLScripts              
+  - stage: Update_db
+    displayName: 'Update DB'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+    - deployment: Deploy
+      displayName: Update SQL DB
+      environment: Azureway
+      strategy:
+        runOnce:
+          deploy:
+            steps:        
+              - task: AzureCLI@2
+                inputs:
+                  azureSubscription: '$(azureSubscription)'
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    chmod +x $(Pipeline.Workspace)/SQLScripts/bundle
+                    $(Pipeline.Workspace)/SQLScripts/bundle --connection "$(connection_string)"
