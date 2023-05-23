@@ -23,7 +23,12 @@ stages:
             inputs:
               command: custom
               custom: 'tool'
-              arguments: 'update --global dotnet-ef'                      
+              arguments: 'update --global dotnet-ef'     
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: mkdir ef
+              workingDirectory: $(Build.ArtifactStagingDirectory)                               
           - task: DotNetCoreCLI@2
             displayName: Create SQL Scripts
             inputs:
