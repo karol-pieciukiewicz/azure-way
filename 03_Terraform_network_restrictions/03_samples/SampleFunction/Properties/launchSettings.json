@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "SampleFunction": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7131",
+      "launchBrowser": false
+    }
+  }
+}
