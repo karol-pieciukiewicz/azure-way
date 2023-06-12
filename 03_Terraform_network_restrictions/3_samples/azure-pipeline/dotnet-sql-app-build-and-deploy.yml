@@ -1,0 +1,136 @@
+trigger: none
+
+pool: Default
+
+variables:
+  buildConfiguration: 'Release'
+  webAppName: '#WEB_APP_NAME#'
+  azureSubscription: '#SERIVCE_CONNECTION_NAME#'
+  apimResourceGroup: '#APIM_RG#'
+  apimName: '#APIM_NAME#'
+  apimServiceName: '#APIM_SERVICE_NAME#'
+  apimPath: '#APIM_SERVICE_PATH'
+  specificationUrl: 'https://#WEB_APP_NAME#.azurewebsites.net/swagger/v1/swagger.json'
+  serviceUrl: 'https://#WEB_APP_NAME#.azurewebsites.net'
+  specificationFormat: 'OpenApiJson'  
+  productName: TodoProduct
+  productNameId: TodoProductId
+  projectPath: $(Build.SourcesDirectory)/TodoApi/TodoApi.csproj
+  databaseContext: MyDatabaseContext
+  connectionString: Server=tcp:#AZURE_SQL_SERVER_NAME#.database.windows.net;Authentication=Active Directory Default;Database=#AZURE_SQL_DB_NAME#;
+stages:
+  - stage: Build
+    displayName: Build Stage
+    jobs:
+      - job: Build
+        displayName: Build ToDoApi
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: '7.x'        
+          - task: DotNetCoreCLI@2
+            displayName: Install EF Tool
+            inputs:
+              command: custom
+              custom: 'tool'
+              arguments: 'update --global dotnet-ef'         
+          - task: DotNetCoreCLI@2
+            displayName: Restore
+            inputs:
+              command: 'restore'
+              projects: '**/*.csproj'
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: 'build'
+              projects: '$(projectPath)'
+              arguments: --configuration $(buildConfiguration)   
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: mkdir ef
+              workingDirectory: $(Build.ArtifactStagingDirectory)
+          - task: DotNetCoreCLI@2
+            displayName: Create SQL Scripts
+            inputs:
+              command: custom
+              custom: 'ef'
+              arguments: 'migrations bundle --self-contained -r linux-x64 --no-build --output $(Build.ArtifactStagingDirectory)/ef/bundle --project $(projectPath) --context $(databaseContext) --configuration $(buildConfiguration)'
+          - task: DotNetCoreCLI@2
+            displayName: Publish
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: '$(projectPath)'
+              arguments: '--configuration $(buildConfiguration) --output $(build.artifactstagingdirectory)/api'
+              zipAfterPublish: True
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact'
+            inputs:
+              PathtoPublish: '$(build.artifactstagingdirectory)/api'
+           
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact: SQLScripts'
+            inputs:
+              PathtoPublish: $(Build.ArtifactStagingDirectory)/ef
+              ArtifactName: SQLScripts              
+  - stage: Update_db
+    displayName: 'Update DB'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+    - deployment: Deploy
+      displayName: Update SQL DB
+      environment: Azureway
+      strategy:
+        runOnce:
+          deploy:
+            steps:        
+              - task: AzureCLI@2
+                inputs:
+                  azureSubscription: '$(azureSubscription)'
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    chmod +x $(Pipeline.Workspace)/SQLScripts/bundle
+                    $(Pipeline.Workspace)/SQLScripts/bundle --connection "$(connectionString)"
+  - stage: Deploy
+    displayName: 'Deploy web app'
+    dependsOn: Update_db
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy web app
+        environment: Azureway
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'webAppLinux'
+                    appName: $(webAppName) 
+                    package: '$(Pipeline.Workspace)/drop/TodoApi.zip'            
+      - job: UpdateApim
+        dependsOn: Deploy
+        displayName: Update Application Management definition
+        steps:
+        - script: sleep 180s
+        - task: AzureCLI@2
+          displayName: Import API to APIM
+          inputs:
+            azureSubscription: '$(azureSubscription)'
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              currentApiRevision=$(az apim api revision list --resource-group $APIMRESOURCEGROUP --service-name $APIMNAME --api-id $APIMSERVICENAME | jq '.[0].apiRevision' ) 
+              parsedApiRevision=$(echo $currentApiRevision | tr -d '"')
+              nextApiRevision=$(($parsedApiRevision + 1))
+              echo $nextApiRevision
+          
+              az apim product create --resource-group $APIMRESOURCEGROUP  --service-name $APIMNAME --product-id $PRODUCTNAMEID --product-name $PRODUCTNAME --subscription-required true --approval-required false --state "published"
+              az apim product api add --resource-group $APIMRESOURCEGROUP --service-name $APIMNAME --product-id $PRODUCTNAMEID --api-id $APIMSERVICENAME
+              az apim api import -g $APIMRESOURCEGROUP --service-name $APIMNAME --path $APIMPATH --service-url $SERVICEURL --specification-url $SPECIFICATIONURL --specification-format $SPECIFICATIONFORMAT --api-type http --api-revision $nextApiRevision  --api-id $APIMSERVICENAME --subscription-required false
+              az apim api release create --resource-group $APIMRESOURCEGROUP --service-name $APIMNAME --api-id $APIMSERVICENAME --release-id MyRelease_$nextApiRevision --api-revision $nextApiRevision
+
