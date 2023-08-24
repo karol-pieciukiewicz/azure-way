@@ -13,19 +13,3 @@ variable "location" {
 variable "locationShortName" {
   description = "Short name of the location"
 }
-
-# variable "subscription-id" {
-#   description = "Subscription for service principal"
-# }
-
-# variable "spn-client-id" {
-#   description = "Client ID of the service principal"
-# }
-
-# variable "spn-client-secret" {
-#   description = "Secret for service principal"
-# }
-
-# variable "spn-tenant-id" {
-#   description = "Tenant ID for service principal"
-# }
