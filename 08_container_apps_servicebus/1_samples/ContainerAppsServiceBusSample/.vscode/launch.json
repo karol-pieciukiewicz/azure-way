@@ -1,0 +1,28 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": ".NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/08_container_apps_servicebus/sample/ContainerAppsServiceBusSample/bin/Debug/net7.0/ContainerAppsServiceBusSample.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/08_container_apps_servicebus/sample/ContainerAppsServiceBusSample",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "env": {
+                "serviceBusQueue": "test",
+                "serviceBusConnectionString": "Endpoint=sb://acatestkp.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=2ICNcKa4SAmC+FL+h4z0L9shpvOI6TFg++ASbMbl7Rg="
+            }
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ]
+}
