@@ -1,0 +1,24 @@
+variables:
+# Terraform backend configuration
+- name: container_name
+  value: 
+- name: key
+  value: tf-$(container_name).tfstate
+- name: storage_account_name
+  value: 
+# Terraform configuration file for environment  
+- name: configuration-file-path
+  value: environment/dev/dev.tfvars
+# Terraform service principal data  
+- name: spn_client_id
+  value: 
+- name: spn_tenant_id
+  value: 
+# Terraform workdir and version  
+- name: terafform-workdir
+  value: terraform
+- name: terraform-version
+  value: 1.5.7
+# Subscription details  
+- name: subscription_id
+  value: 

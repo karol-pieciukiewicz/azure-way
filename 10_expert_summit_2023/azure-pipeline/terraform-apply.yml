@@ -1,0 +1,38 @@
+pool: Default
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - terraform
+
+stages:
+- stage: Terraform
+  displayName: 'Create terraform plan'
+  variables:
+  - template: variable_groups/terraform-sample-variables.yml
+  - group: terraform-expert-summit
+  jobs:
+    - job: PlanAndApply
+      steps:
+      - task: TerraformInstaller@1
+        displayName: Install Terraform $(terraform-version)
+        inputs:
+          terraformVersion: $(terraform-version)
+      - task: CmdLine@2
+        displayName: Terraform Init
+        inputs:
+          script: terraform init -upgrade -backend-config="access_key=$(access_key)" -backend-config="storage_account_name=$(storage_account_name)" -backend-config="container_name=$(container_name)" -backend-config="key=$(key)"
+          workingDirectory: $(terafform-workdir)
+      - task: CmdLine@2
+        displayName: Terraform Validate
+        inputs:
+          script: terraform validate
+          workingDirectory: $(terafform-workdir)     
+      - task: CmdLine@2
+        displayName: Terraform Apply
+        inputs:
+          script: terraform apply -auto-approve -input=false -var-file=$(configuration-file-path) -var="spn-client-id=$(spn_client_id)" -var="spn-client-secret=$(spn_client_secret)" -var="spn-tenant-id=$(spn_tenant_id)" -var="subscription-id=$(subscription_id)"
+          workingDirectory: $(terafform-workdir)  
