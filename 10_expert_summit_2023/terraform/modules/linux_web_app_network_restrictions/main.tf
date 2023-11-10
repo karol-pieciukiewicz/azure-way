@@ -83,6 +83,13 @@ resource "azurerm_private_dns_zone_virtual_network_link" "wapp_dns_vnet_link" {
   virtual_network_id    = var.app_vnet_id
 }
 
+resource "azurerm_private_dns_zone_virtual_network_link" "wapp_dns_ado_vnet_link" {
+  name                  = "wapp-ado-vnet-dns-link"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.main.name
+  virtual_network_id    = var.ado_vnet_id
+}
+
 resource "azurerm_role_assignment" "principal_rbac" {
   scope                = var.key_vault_id
   role_definition_name = "Key Vault Secrets User"

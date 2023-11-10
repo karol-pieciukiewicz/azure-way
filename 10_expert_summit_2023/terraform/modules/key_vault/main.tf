@@ -73,6 +73,18 @@ resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_vnet_link" {
   ]
 }
 
+resource "azurerm_private_dns_zone_virtual_network_link" "kv_dns_ado_vnet_link" {
+  name                  = "kv-ado-vnet-dns-link"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.kv_dns.name
+  virtual_network_id    = var.ado_vnet_id
+
+  depends_on = [
+    azurerm_role_assignment.principal_rbac,
+    azurerm_key_vault.keyvault
+  ]
+}
+
 resource "azurerm_key_vault_secret" "secret_1" {
   name         = "ExpertSummitSecret"
   value        = "AwsomeWork!"
