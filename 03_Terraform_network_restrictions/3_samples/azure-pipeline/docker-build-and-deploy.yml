@@ -1,0 +1,89 @@
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger: none
+
+pool: Default
+
+resources:
+- repo: self
+
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'AzurewayContainerRegistry'
+  azureSubscription: 'AzurewaySpn'
+  imageRepository: 'azureway/sampleapi'
+  containerRegistry: 'devweunetworkacr.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/SampleApi/Dockerfile'
+  tag: '$(Build.BuildId)'
+  appName: 'dev-weu-network-docker-webapp'
+  resourceGroup: dev-weu-network
+
+  apimResourceGroup: 'dev-weu-network'
+  apimName: 'dev-weu-network-apim'
+  apimServiceName: 'Sample_Web_API'
+  apimPath: 'sample_webapi'
+  specificationUrl: 'https://dev-weu-network-docker-webapp.azurewebsites.net/swagger/v1/swagger.json'
+  serviceUrl: 'https://dev-weu-network-docker-webapp.azurewebsites.net'
+  specificationFormat: 'OpenApiJson'  
+  productName: SampleWebApiProduct
+  productNameId: SampleWebApiProductId
+  agentPoolName: devweunetworkacrpool
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    steps:
+    - task: AzureCLI@2
+      displayName: Buid and push an image to container registry
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: $(Build.SourcesDirectory)/SampleApi
+        inlineScript: |
+          az acr build --registry $CONTAINERREGISTRY --agent-pool $(agentPoolName) --image $IMAGEREPOSITORY:$TAG -t $IMAGEREPOSITORY:latest .
+  - job: Deploy
+    dependsOn: Build
+    displayName: Deploy
+    steps:
+    - script: sleep 30s
+    - task: AzureCLI@2
+      displayName: Set vnetImagePullEnabled to the web app
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az resource update --resource-group $RESOURCEGROUP --name $APPNAME --resource-type "Microsoft.Web/sites" --set properties.vnetImagePullEnabled="true"
+    - task: AzureWebAppContainer@1
+      displayName: 'Azure Web App on Container Deploy'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        appName: $(appName)
+        imageName: $(containerRegistry)/$(imageRepository):$(tag)
+  - job: UpdateApim
+    dependsOn: Deploy
+    displayName: Update Application Management definition
+    steps:
+    - script: sleep 300s
+    - task: AzureCLI@2
+      displayName: Import API to APIM
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          currentApiRevision=$(az apim api revision list --resource-group $APIMRESOURCEGROUP --service-name $APIMNAME --api-id $APIMSERVICENAME | jq '.[0].apiRevision' ) 
+          parsedApiRevision=$(echo $currentApiRevision | tr -d '"')
+          nextApiRevision=$(($parsedApiRevision + 1))
+          echo $nextApiRevision
+      
+          az apim product create --resource-group $APIMRESOURCEGROUP  --service-name $APIMNAME --product-id $PRODUCTNAMEID --product-name $PRODUCTNAME --subscription-required true --approval-required false --state "published"
+          az apim product api add --resource-group $APIMRESOURCEGROUP --service-name $APIMNAME --product-id $PRODUCTNAMEID --api-id $APIMSERVICENAME
+          az apim api import -g $APIMRESOURCEGROUP --service-name $APIMNAME --path $APIMPATH --service-url $SERVICEURL --specification-url $SPECIFICATIONURL --specification-format $SPECIFICATIONFORMAT --api-type http --api-revision $nextApiRevision  --api-id $APIMSERVICENAME --subscription-required false
+          az apim api release create --resource-group $APIMRESOURCEGROUP --service-name $APIMNAME --api-id $APIMSERVICENAME --release-id MyRelease_$nextApiRevision --api-revision $nextApiRevision
+
