@@ -1,6 +1,6 @@
 locals {
   prefix    = "${var.app_name}-automation-${var.environment}"
-  imagePath = "../runner-images-main/images/ubuntu/templates/ubuntu2204.pkr.hcl"
+  imagePath = "../runner-images-main/images/ubuntu/templates/ubuntu-22.04.pkr.hcl"
 }
 
 
