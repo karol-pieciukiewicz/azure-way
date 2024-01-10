@@ -22,8 +22,6 @@ if (-not (Test-Path $TemplatePath))
 $ImageTemplateName = [io.path]::GetFileName($TemplatePath).Split(".")[0]
 $InstallPassword = [System.GUID]::NewGuid().ToString().ToUpper()
 
-packer validate -syntax-only $TemplatePath
-
 $SensitiveData = @(
     'OSType',
     'StorageAccountLocation',
@@ -36,6 +34,12 @@ $SensitiveData = @(
 
 Write-Host "Show Packer Version"
 packer --version
+
+Write-Host "Download packer plugins"
+packer init $TemplatePath
+
+Write-Host "Validate packer template"
+packer validate -syntax-only $TemplatePath
 
 Write-Host "Build $ImageTemplateName VM"
 packer build    -var "client_id=$ClientId" `
@@ -50,7 +54,6 @@ packer build    -var "client_id=$ClientId" `
                 -var "virtual_network_name=$VirtualNetworkName" `
                 -var "virtual_network_resource_group_name=$VirtualNetworkRG" `
                 -var "virtual_network_subnet_name=$VirtualNetworkSubnet" `
-                -var "run_validation_diskspace=$env:RUN_VALIDATION_FLAG" `
                 -color=false `
                 $TemplatePath `
         | Where-Object {

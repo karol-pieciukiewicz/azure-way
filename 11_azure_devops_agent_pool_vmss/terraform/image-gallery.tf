@@ -1,6 +1,6 @@
 locals {
   prefix    = "${var.app_name}-automation-${var.environment}"
-  imagePath = "../runner-images-main/images/linux/ubuntu2204.pkr.hcl"
+  imagePath = "../runner-images-main/images/ubuntu/templates/ubuntu2204.pkr.hcl"
 }
 
 
@@ -75,7 +75,7 @@ data "azurerm_image" "image" {
 }
 
 resource "azurerm_shared_image_version" "example" {
-  name                = "0.0.1"
+  name                = "0.0.2"
   gallery_name        = azurerm_shared_image.image.gallery_name
   image_name          = azurerm_shared_image.image.name
   resource_group_name = azurerm_shared_image.image.resource_group_name
