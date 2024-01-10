@@ -3,7 +3,6 @@ locals {
   imagePath = "../runner-images-main/images/ubuntu/templates/ubuntu-22.04.pkr.hcl"
 }
 
-
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_shared_image_gallery" "imageGallery" {
