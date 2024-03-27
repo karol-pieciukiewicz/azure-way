@@ -3,6 +3,7 @@ locals {
   prefixSafe = "${random_pet.rg.id}${var.environment}"
 
   image_name = "containerapps-helloworld:latest"
+  redis_sample_app_image = "sample-service-redis:latest"
 }
 
 data "azurerm_client_config" "current" {}
@@ -69,18 +70,47 @@ resource "azurerm_container_app_environment" "app_env" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
 
   infrastructure_subnet_id = module.virtual_network.app_subnet_id
+
+  workload_profile {
+    name = "test-1"
+    workload_profile_type = "D4"
+    maximum_count = 1
+    minimum_count = 1
+  }
+}
+
+resource "time_sleep" "wait_60_seconds" {
+  depends_on = [module.container_registry]
+
+  create_duration = "60s"
 }
 
 resource "null_resource" "acr_import" {
-      provisioner "local-exec" {
-      command = <<-EOT
+  provisioner "local-exec" {
+    command = <<-EOT
         az acr import \
             --name ${module.container_registry.name} \
             --source mcr.microsoft.com/azuredocs/${local.image_name} \
             --image ${local.image_name}
       EOT
-      }
-    }
+  }
+
+  depends_on = [ time_sleep.wait_60_seconds ]
+}
+
+resource "null_resource" "redis_acr_import" {
+  provisioner "local-exec" {
+    command = <<-EOT
+        az acr import \
+            --name ${module.container_registry.name} \
+            --source mcr.microsoft.com/k8se/samples/${local.redis_sample_app_image} \
+            --image ${local.redis_sample_app_image}
+      EOT
+  }
+
+  depends_on = [ time_sleep.wait_60_seconds ]
+}
+
 
 resource "azurerm_container_app" "sampleapi" {
   name                         = "${local.prefix}-app"
@@ -89,8 +119,8 @@ resource "azurerm_container_app" "sampleapi" {
   revision_mode                = "Single"
 
   identity {
-    type = "SystemAssigned, UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.ca_identity.id ]
+    type         = "SystemAssigned, UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.ca_identity.id]
   }
 
   registry {
@@ -100,7 +130,7 @@ resource "azurerm_container_app" "sampleapi" {
 
   template {
     container {
-      name = "sampleapi"
+      name   = "sampleapi"
       image  = "${module.container_registry.url}/${local.image_name}"
       cpu    = 0.25
       memory = "0.5Gi"
@@ -108,17 +138,108 @@ resource "azurerm_container_app" "sampleapi" {
 
     min_replicas = 0
     max_replicas = 5
+
   }
 
   ingress {
     allow_insecure_connections = false
     external_enabled           = true
     target_port                = 80
+   
     traffic_weight {
+      percentage = 100
       latest_revision = true
-      percentage      = 100
     }
   }
 
   depends_on = [null_resource.acr_import]
+}
+
+resource "azurerm_container_app" "sampleapi_dedicated" {
+  name                         = "${local.prefix}-dedicated-app"
+  container_app_environment_id = azurerm_container_app_environment.app_env.id
+  resource_group_name          = azurerm_resource_group.rg.name
+  revision_mode                = "Single"
+  workload_profile_name        = "test-1"
+
+  identity {
+    type         = "SystemAssigned, UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.ca_identity.id]
+  }
+
+  registry {
+    identity = azurerm_user_assigned_identity.ca_identity.id
+    server   = module.container_registry.url
+  }
+
+  template {
+    container {
+      name   = "sampleapi"
+      image  = "${module.container_registry.url}/${local.image_name}"
+      cpu    = 0.25
+      memory = "0.5Gi"
+    }
+
+    min_replicas = 0
+    max_replicas = 5
+
+  }
+
+  ingress {
+    allow_insecure_connections = false
+    external_enabled           = true
+    target_port                = 80
+   
+    traffic_weight {
+      percentage = 100
+      latest_revision = true
+    }
+  }
+
+  depends_on = [null_resource.acr_import]
+}
+
+
+resource "azurerm_container_app" "sampleredis_dedicated" {
+  name                         = "${local.prefix}-redis-app"
+  container_app_environment_id = azurerm_container_app_environment.app_env.id
+  resource_group_name          = azurerm_resource_group.rg.name
+  revision_mode                = "Single"
+  workload_profile_name        = "test-1"
+
+  identity {
+    type         = "SystemAssigned, UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.ca_identity.id]
+  }
+
+  registry {
+    identity = azurerm_user_assigned_identity.ca_identity.id
+    server   = module.container_registry.url
+  }
+
+  template {
+    container {
+      name   = "sampleredisapp"
+      image  = "${module.container_registry.url}/${local.redis_sample_app_image}"
+      cpu    = 0.25
+      memory = "0.5Gi"
+    }
+
+    min_replicas = 0
+    max_replicas = 5
+
+  }
+
+  ingress {
+    allow_insecure_connections = false
+    external_enabled           = true
+    target_port                = 8080
+   
+    traffic_weight {
+      percentage = 100
+      latest_revision = true
+    }
+  }
+
+  depends_on = [null_resource.redis_acr_import]
 }
