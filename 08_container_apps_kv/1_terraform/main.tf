@@ -92,6 +92,13 @@ resource "azurerm_container_app_environment" "app_env" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
 
   infrastructure_subnet_id = module.virtual_network.app_subnet_id
+
+  workload_profile {
+    name = "Consumption"
+    workload_profile_type = "Consumption"
+    maximum_count = 1
+    minimum_count = 1
+  }  
 }
 
 resource "azurerm_key_vault_secret" "secret_1" {
@@ -128,7 +135,6 @@ resource "azurerm_container_app" "sampleapi" {
 
     min_replicas = 0
     max_replicas = 5
-
   }
 
   ingress {
@@ -143,12 +149,12 @@ resource "azurerm_container_app" "sampleapi" {
   }
 
   lifecycle {
-    ignore_changes = [ secret, template[0].container[0].env ]
+    ignore_changes = [  template[0].container[0].env ]
   }
 }
 
 output "keyVaultSecretUrl" {
-  value = "${azurerm_key_vault.rbac_example.vault_uri}secrets/${azurerm_key_vault_secret.secret_1.name}"
+  value = "${azurerm_key_vault_secret.secret_1.id}"
 }
 
 output "keyVaultSecretName" {
