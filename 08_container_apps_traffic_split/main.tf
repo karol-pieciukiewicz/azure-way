@@ -67,6 +67,19 @@ resource "azurerm_container_app_environment" "app_env" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
 
   infrastructure_subnet_id = module.virtual_network.app_subnet_id
+
+  workload_profile {
+    name = "Consumption"
+    workload_profile_type = "Consumption"
+    maximum_count = 1
+    minimum_count = 1
+  }  
+}
+
+resource "time_sleep" "wait_60_seconds" {
+  depends_on = [module.container_registry]
+
+  create_duration = "60s"
 }
 
 resource "null_resource" "acr_import" {
@@ -82,6 +95,8 @@ resource "null_resource" "acr_import" {
   triggers = {
     image_name = var.image_name
   }
+
+  depends_on = [ time_sleep.wait_60_seconds ]
 }
 
 resource "azurerm_container_app" "sampleapi" {
@@ -109,7 +124,7 @@ resource "azurerm_container_app" "sampleapi" {
 
     }
 
-    revision_suffix = var.traffic_weights[0].revision_suffix
+    revision_suffix = var.revision_suffix
     min_replicas    = 0
     max_replicas    = 5
   }
@@ -122,6 +137,7 @@ resource "azurerm_container_app" "sampleapi" {
     dynamic "traffic_weight" {
       for_each = var.traffic_weights
       content {
+        latest_revision = traffic_weight.value.latest_revision
         revision_suffix = traffic_weight.value.revision_suffix
         percentage      = traffic_weight.value.percentage
       }

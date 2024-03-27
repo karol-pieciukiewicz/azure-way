@@ -43,9 +43,14 @@ variable "image_name" {
 variable "image_version" {
 
 }
+
+variable "revision_suffix" {
+  
+}
 variable "traffic_weights" {
   type = list(object({
-    revision_suffix = string,
+    latest_revision = bool,
+    revision_suffix = optional(string),
     percentage      = number
   }))
 }
