@@ -1,4 +1,4 @@
-# [Azure Event Grid Namespace - Terraform Setup] (https://azureway.cloud/azure-event-grid-namespace-terraform-setup/)
+# [Azure Event Grid Namespace - Terraform Setup](https://azureway.cloud/azure-event-grid-namespace-terraform-setup/)
 
 ## Overview
 
